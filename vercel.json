@@ -2,28 +2,38 @@
   "version": 2,
   "builds": [
     {
-      "src": "src/index.ts",
+      "src": "api/index.ts",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/health",
-      "dest": "src/index.ts",
+      "src": "/",
+      "dest": "api/index.ts",
       "methods": ["GET"]
     },
     {
-      "src": "/api/mcp/(.*)",
-      "dest": "src/index.ts",
-      "methods": ["POST", "GET"]
+      "src": "/mcp",
+      "dest": "api/index.ts",
+      "methods": ["GET"]
     },
     {
-      "src": "/api/monolith/(.*)",
-      "dest": "src/index.ts",
-      "methods": ["POST", "GET"]
+      "src": "/api/mcp",
+      "dest": "api/index.ts",
+      "methods": ["POST"]
+    },
+    {
+      "src": "/health",
+      "dest": "api/index.ts",
+      "methods": ["GET"]
     }
   ],
   "env": {
     "NODE_ENV": "production"
+  },
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 10
+    }
   }
 }

@@ -1,134 +1,126 @@
 import axios, { AxiosInstance } from 'axios';
 import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
-import { TailscaleService } from './tailscaleService.js';
-import { ServiceError, NotFoundError } from '../middleware/errorHandler.js';
 
 export class MonolithService {
   private client: AxiosInstance;
-  private tailscaleService: TailscaleService;
 
   constructor() {
-    this.tailscaleService = new TailscaleService();
     this.client = axios.create({
-      baseURL: config.monolithAgentUrl,
+      baseURL: config.monolith.url,
       timeout: 30000,
       headers: {
+        'Authorization': `Bearer ${config.monolith.apiKey}`,
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.monolithApiKey}`
+        'User-Agent': 'Monolith-Vercel-Bridge/1.0.0'
       }
     });
-
-    // Add request interceptor for logging
-    this.client.interceptors.request.use(
-      (config) => {
-        logger.debug('Monolith request', {
-          method: config.method,
-          url: config.url,
-          data: config.data
-        });
-        return config;
-      },
-      (error) => {
-        logger.error('Monolith request error', { error: error.message });
-        return Promise.reject(error);
-      }
-    );
-
-    // Add response interceptor for logging
-    this.client.interceptors.response.use(
-      (response) => {
-        logger.debug('Monolith response', {
-          status: response.status,
-          data: response.data
-        });
-        return response;
-      },
-      (error) => {
-        logger.error('Monolith response error', {
-          status: error.response?.status,
-          message: error.message,
-          data: error.response?.data
-        });
-        return Promise.reject(error);
-      }
-    );
-  }
-
-  async forwardRequest(endpoint: string, method: string = 'GET', data?: any): Promise<any> {
-    try {
-      // Ensure Tailscale connection is active
-      await this.tailscaleService.ensureConnection();
-
-      const response = await this.client.request({
-        method,
-        url: endpoint,
-        data
-      });
-
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        throw new NotFoundError(`Endpoint not found: ${endpoint}`);
-      }
-      throw new ServiceError(`Failed to forward request to Monolith Agent: ${error.message}`);
-    }
-  }
-
-  async getStatus(): Promise<any> {
-    try {
-      const tailscaleStatus = await this.tailscaleService.getStatus();
-      const response = await this.client.get('/health');
-
-      return {
-        monolith: {
-          status: 'connected',
-          health: response.data,
-          url: config.monolithAgentUrl
-        },
-        tailscale: tailscaleStatus,
-        timestamp: new Date().toISOString()
-      };
-    } catch (error: any) {
-      logger.error('Failed to get Monolith status', { error: error.message });
-      return {
-        monolith: {
-          status: 'disconnected',
-          error: error.message,
-          url: config.monolithAgentUrl
-        },
-        tailscale: await this.tailscaleService.getStatus(),
-        timestamp: new Date().toISOString()
-      };
-    }
-  }
-
-  async executeCommand(command: string, args?: any): Promise<any> {
-    try {
-      await this.tailscaleService.ensureConnection();
-
-      const response = await this.client.post('/execute', {
-        command,
-        args
-      });
-
-      return response.data;
-    } catch (error: any) {
-      throw new ServiceError(`Failed to execute command: ${error.message}`);
-    }
   }
 
   async query(query: string): Promise<any> {
     try {
-      await this.tailscaleService.ensureConnection();
+      logger.info('Sending query to Monolith Agent', { query });
+      
+      const response = await this.client.post('/api/v1/query', {
+        query,
+        timestamp: new Date().toISOString()
+      });
 
-      const response = await this.client.post('/query', {
-        query
+      logger.info('Query response received from Monolith');
+      return response.data;
+
+    } catch (error: any) {
+      logger.error('Monolith query error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+
+      if (error.response?.status === 401) {
+        throw new Error('Unauthorized: Invalid Monolith API key');
+      }
+      
+      if (error.code === 'ECONNREFUSED') {
+        throw new Error('Cannot connect to Monolith Agent. Check Tailscale connection.');
+      }
+
+      throw new Error(`Monolith query failed: ${error.message}`);
+    }
+  }
+
+  async execute(command: string, args: any = {}): Promise<any> {
+    try {
+      logger.info('Executing command on Monolith Agent', { command, args });
+      
+      const response = await this.client.post('/api/v1/execute', {
+        command,
+        args,
+        timestamp: new Date().toISOString()
+      });
+
+      logger.info('Command executed successfully on Monolith');
+      return response.data;
+
+    } catch (error: any) {
+      logger.error('Monolith execute error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+
+      if (error.response?.status === 401) {
+        throw new Error('Unauthorized: Invalid Monolith API key');
+      }
+      
+      if (error.code === 'ECONNREFUSED') {
+        throw new Error('Cannot connect to Monolith Agent. Check Tailscale connection.');
+      }
+
+      throw new Error(`Monolith execute failed: ${error.message}`);
+    }
+  }
+
+  async getHealth(): Promise<any> {
+    try {
+      const response = await this.client.get('/health');
+      
+      return {
+        status: 'connected',
+        health: response.data,
+        url: config.monolith.url
+      };
+
+    } catch (error: any) {
+      logger.warn('Monolith health check failed:', error.message);
+      
+      return {
+        status: 'disconnected',
+        health: null,
+        url: config.monolith.url,
+        error: error.message
+      };
+    }
+  }
+
+  async forwardRequest(endpoint: string, method: string, data?: any): Promise<any> {
+    try {
+      logger.info('Forwarding request to Monolith', { endpoint, method });
+      
+      const response = await this.client.request({
+        url: endpoint,
+        method,
+        data
       });
 
       return response.data;
+
     } catch (error: any) {
-      throw new ServiceError(`Failed to query Monolith Agent: ${error.message}`);
+      logger.error('Monolith forward error:', {
+        message: error.message,
+        status: error.response?.status
+      });
+
+      throw new Error(`Forward request failed: ${error.message}`);
     }
   }
 }

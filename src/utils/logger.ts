@@ -11,33 +11,21 @@ const logFormat = winston.format.combine(
 const consoleFormat = winston.format.combine(
   winston.format.colorize(),
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  winston.format.printf(({ timestamp, level, message, ...metadata }) => {
-    let msg = `${timestamp} [${level}] ${message}`;
-    if (Object.keys(metadata).length > 0) {
-      msg += ` ${JSON.stringify(metadata)}`;
+  winston.format.printf(({ timestamp, level, message, ...meta }) => {
+    let msg = `${timestamp} [${level}]: ${message}`;
+    if (Object.keys(meta).length > 0) {
+      msg += ` ${JSON.stringify(meta)}`;
     }
     return msg;
   })
 );
 
 export const logger = winston.createLogger({
-  level: config.logLevel,
+  level: config.logging.level,
   format: logFormat,
-  defaultMeta: { service: 'monolith-vercel-bridge' },
   transports: [
     new winston.transports.Console({
-      format: config.nodeEnv === 'production' ? logFormat : consoleFormat
+      format: config.nodeEnv === 'development' ? consoleFormat : logFormat
     })
   ]
-});
-
-// Handle unhandled rejections
-process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
-  logger.error('Unhandled Rejection at:', { promise, reason: reason?.stack || reason });
-});
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (error: Error) => {
-  logger.error('Uncaught Exception:', { error: error.stack || error.message });
-  process.exit(1);
 });
