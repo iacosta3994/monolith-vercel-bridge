@@ -8,14 +8,29 @@
   ],
   "routes": [
     {
+      "src": "/",
+      "dest": "src/index.ts",
+      "methods": ["GET"]
+    },
+    {
+      "src": "/.well-known/mcp-server",
+      "dest": "src/index.ts",
+      "methods": ["GET"]
+    },
+    {
       "src": "/health",
       "dest": "src/index.ts",
       "methods": ["GET"]
     },
     {
-      "src": "/api/mcp/(.*)",
+      "src": "/mcp",
       "dest": "src/index.ts",
-      "methods": ["POST", "GET"]
+      "methods": ["GET", "POST"]
+    },
+    {
+      "src": "/mcp/(.*)",
+      "dest": "src/index.ts",
+      "methods": ["GET", "POST"]
     },
     {
       "src": "/api/monolith/(.*)",
