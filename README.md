@@ -1,76 +1,159 @@
-# Monolith Vercel Bridge
+# Monolith Vercel Bridge - MCP Server
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fiacosta3994%2Fmonolith-vercel-bridge&env=BEARER_TOKEN,API_KEY,MONOLITH_AGENT_URL,MONOLITH_API_KEY,TAILSCALE_API_KEY,TAILSCALE_TAILNET&envDescription=Configuration%20for%20Monolith%20Bridge&envLink=https%3A%2F%2Fgithub.com%2Fiacosta3994%2Fmonolith-vercel-bridge%23environment-variables)
 
-Production-ready Vercel MCP (Model Context Protocol) server implementation that bridges to Atlas's Monolith Agent with Tailscale integration for secure communication.
+Production-ready Model Context Protocol (MCP) server with Server-Sent Events (SSE) transport for seamless integration with Poke and other MCP clients. Bridges to Atlas's Monolith Agent via Tailscale for secure communication.
 
-## 🚀 Features
+## 🌟 Features
 
-- **MCP Protocol Support**: Full implementation of the Model Context Protocol for AI agent communication
-- **Express Server**: Production-grade Express.js server with TypeScript
-- **Bearer Token Authentication**: Secure API access with bearer token validation
-- **Tailscale Integration**: Secure network communication via Tailscale
-- **Monolith Agent Bridge**: Direct connection to Atlas's Monolith Agent
-- **Error Handling**: Comprehensive error handling and logging with Winston
-- **Type Safety**: Full TypeScript implementation with strict type checking
-- **Vercel Ready**: Optimized for Vercel deployment with serverless functions
-- **Production Ready**: Includes security headers, CORS, rate limiting considerations
+### Core MCP Implementation
+- ✅ **MCP Protocol 2024-11-05**: Full compliance with latest MCP specification
+- ✅ **SSE Transport**: Server-Sent Events for real-time streaming
+- ✅ **JSON-RPC 2.0**: Standard JSON-RPC protocol support
+- ✅ **Auto-Discovery**: Root endpoint for Poke's discovery mechanism
+- ✅ **Tool Registry**: Dynamic tool registration and execution
 
-## 📋 Architecture Overview
+### Infrastructure
+- 🚀 **Vercel Serverless**: Optimized for Vercel deployment
+- 🔒 **Bearer Authentication**: Secure API access
+- 🔗 **Tailscale Integration**: Secure VPN tunneling to Monolith Agent
+- 📊 **Structured Logging**: Winston-based logging with levels
+- 🛡️ **Error Handling**: Comprehensive error handling and validation
+- ⚡ **TypeScript**: Full type safety and IntelliSense support
+
+### Atlas Integration
+- 🤖 **Monolith Agent Bridge**: Direct communication with Atlas agent
+- 🔧 **Command Execution**: Execute operations on Monolith
+- 📡 **Status Monitoring**: Real-time health and status checks
+- 🌐 **Network Management**: Tailscale device discovery and management
+
+## 🏗️ Architecture
 
 ```
-┌─────────────────┐
-│   MCP Client    │
-│  (AI Assistant) │
-└────────┬────────┘
-         │
-         │ HTTPS + Bearer Token
-         ▼
-┌─────────────────────────────┐
-│  Vercel MCP Server          │
-│  ┌──────────────────────┐   │
-│  │  Express Server      │   │
-│  │  - Auth Middleware   │   │
-│  │  - MCP Routes        │   │
-│  │  - Error Handling    │   │
-│  └──────────┬───────────┘   │
-│             │                │
-│  ┌──────────▼───────────┐   │
-│  │  MCP Service         │   │
-│  │  - Tool Management   │   │
-│  │  - Request Routing   │   │
-│  └──────────┬───────────┘   │
-│             │                │
-│  ┌──────────▼───────────┐   │
-│  │  Monolith Service    │   │
-│  │  - API Client        │   │
-│  │  - Request Forward   │   │
-│  └──────────┬───────────┘   │
-│             │                │
-│  ┌──────────▼───────────┐   │
-│  │  Tailscale Service   │   │
-│  │  - Device Management │   │
-│  │  - Connection Check  │   │
-│  └──────────────────────┘   │
-└─────────────┬───────────────┘
-              │
-              │ Tailscale VPN
-              ▼
-┌─────────────────────────────┐
-│   Monolith Agent (Atlas)    │
-│   - Command Execution       │
-│   - Query Processing        │
-│   - Status Reporting        │
-└─────────────────────────────┘
+┌─────────────────────────────────────┐
+│   Poke / MCP Client                 │
+│   - Discovery (GET /)               │
+│   - SSE Connection (GET /mcp)       │
+│   - JSON-RPC (POST /api/mcp)        │
+└───────────────┬─────────────────────┘
+                │
+                │ HTTPS + Bearer Token
+                ▼
+┌─────────────────────────────────────┐
+│   Vercel Edge Network               │
+│   ┌─────────────────────────────┐   │
+│   │  MCP Server (Serverless)    │   │
+│   │  - Root Handler (/)         │   │
+│   │  - SSE Handler (/mcp)       │   │
+│   │  - JSON-RPC (/api/mcp)      │   │
+│   │  - Health Check (/health)   │   │
+│   └──────────┬──────────────────┘   │
+│              │                       │
+│   ┌──────────▼──────────────────┐   │
+│   │  MCP Server Instance        │   │
+│   │  - Tool Management          │   │
+│   │  - Request Routing          │   │
+│   │  - Protocol Compliance      │   │
+│   └──────────┬──────────────────┘   │
+│              │                       │
+│   ┌──────────▼──────────────────┐   │
+│   │  Service Layer              │   │
+│   │  ┌─────────────────────┐    │   │
+│   │  │ Monolith Service    │    │   │
+│   │  │ - Query/Execute     │    │   │
+│   │  └─────────────────────┘    │   │
+│   │  ┌─────────────────────┐    │   │
+│   │  │ Tailscale Service   │    │   │
+│   │  │ - Device Mgmt       │    │   │
+│   │  └─────────────────────┘    │   │
+│   └─────────────────────────────┘   │
+└──────────────┬──────────────────────┘
+               │
+               │ Tailscale VPN
+               ▼
+┌──────────────────────────────────────┐
+│   Atlas Monolith Agent               │
+│   - Command Processing               │
+│   - Query Handling                   │
+│   - Status Reporting                 │
+└──────────────────────────────────────┘
 ```
 
-## 🛠️ Installation
+## 📋 MCP Protocol Endpoints
+
+### 1. Root Endpoint - Discovery (/)
+**Purpose**: MCP server identification for discovery tools like Poke
+
+```bash
+GET https://your-deployment.vercel.app/
+
+# Response:
+{
+  "protocol": "mcp",
+  "version": "2024-11-05",
+  "name": "Atlas Monolith Bridge MCP Server",
+  "description": "Model Context Protocol server for Atlas Monolith Agent integration",
+  "capabilities": {
+    "tools": true,
+    "resources": false,
+    "prompts": false,
+    "sampling": false
+  },
+  "serverInfo": {
+    "name": "monolith-vercel-bridge",
+    "version": "1.0.0"
+  },
+  "endpoints": {
+    "sse": "/mcp",
+    "jsonrpc": "/api/mcp"
+  }
+}
+```
+
+### 2. SSE Endpoint - Streaming (/mcp)
+**Purpose**: Server-Sent Events stream for real-time communication
+
+```bash
+GET https://your-deployment.vercel.app/mcp
+Authorization: Bearer YOUR_TOKEN
+
+# SSE Stream:
+event: connection
+data: {"protocol":"mcp","version":"2024-11-05",...}
+
+event: tools
+data: {"tools":[...]}
+
+:heartbeat 1709280000000
+```
+
+### 3. JSON-RPC Endpoint (/api/mcp)
+**Purpose**: Standard JSON-RPC 2.0 requests
+
+```bash
+POST https://your-deployment.vercel.app/api/mcp
+Authorization: Bearer YOUR_TOKEN
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "monolith_query",
+    "arguments": {
+      "query": "What is the system status?"
+    }
+  },
+  "id": 1
+}
+```
+
+## 🛠️ Quick Start
 
 ### Prerequisites
 
-- Node.js 18 or higher
-- npm or yarn
-- Vercel account (for deployment)
+- Node.js 18+
+- Vercel account
 - Tailscale account and API key
 - Access to Atlas Monolith Agent
 
@@ -87,31 +170,51 @@ Production-ready Vercel MCP (Model Context Protocol) server implementation that 
    npm install
    ```
 
-3. **Configure environment variables**
+3. **Configure environment**
    ```bash
    cp .env.example .env
    ```
    
-   Edit `.env` with your configuration (see [Environment Variables](#environment-variables) below)
+   Edit `.env`:
+   ```env
+   BEARER_TOKEN=your-secure-bearer-token
+   MONOLITH_AGENT_URL=https://your-monolith-agent.ts.net
+   MONOLITH_API_KEY=your-monolith-api-key
+   TAILSCALE_API_KEY=your-tailscale-api-key
+   TAILSCALE_TAILNET=your-tailnet-name
+   ```
 
 4. **Start development server**
    ```bash
    npm run dev
    ```
+   
+   The server will be available at `http://localhost:3000`
 
-   The server will start on `http://localhost:3000`
-
-5. **Build for production**
+5. **Test the endpoints**
    ```bash
-   npm run build
-   npm start
+   # Test discovery
+   curl http://localhost:3000/
+   
+   # Test SSE (requires auth)
+   curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:3000/mcp
+   
+   # Test JSON-RPC
+   curl -X POST http://localhost:3000/api/mcp \
+     -H "Authorization: Bearer YOUR_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "jsonrpc": "2.0",
+       "method": "tools/list",
+       "id": 1
+     }'
    ```
 
-## 🌐 Vercel Deployment
+## 🚀 Vercel Deployment
 
 ### One-Click Deploy
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fiacosta3994%2Fmonolith-vercel-bridge&env=BEARER_TOKEN,API_KEY,MONOLITH_AGENT_URL,MONOLITH_API_KEY,TAILSCALE_API_KEY,TAILSCALE_TAILNET&envDescription=Configuration%20for%20Monolith%20Bridge&envLink=https%3A%2F%2Fgithub.com%2Fiacosta3994%2Fmonolith-vercel-bridge%23environment-variables)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fiacosta3994%2Fmonolith-vercel-bridge)
 
 ### Manual Deployment
 
@@ -125,41 +228,206 @@ Production-ready Vercel MCP (Model Context Protocol) server implementation that 
    vercel login
    ```
 
-3. **Deploy**
+3. **Deploy to preview**
    ```bash
    vercel
    ```
 
 4. **Set environment variables**
    
-   In the Vercel dashboard:
-   - Navigate to your project
+   In Vercel Dashboard:
    - Go to Settings → Environment Variables
-   - Add all required variables (see below)
+   - Add all required variables from `.env.example`
+   - Set for Production, Preview, and Development
 
-5. **Redeploy**
+5. **Deploy to production**
    ```bash
    vercel --prod
    ```
 
-## ⚙️ Environment Variables
+### Post-Deployment
 
-Create a `.env` file with the following variables:
+After deployment, your MCP server will be available at:
+- Discovery: `https://your-project.vercel.app/`
+- SSE Stream: `https://your-project.vercel.app/mcp`
+- JSON-RPC: `https://your-project.vercel.app/api/mcp`
+- Health: `https://your-project.vercel.app/health`
+
+## 🔌 Poke Integration
+
+### Adding to Poke
+
+1. **Open Poke** and navigate to MCP servers
+
+2. **Add new server**:
+   ```
+   URL: https://your-deployment.vercel.app/
+   Auth: Bearer YOUR_BEARER_TOKEN
+   ```
+
+3. **Poke will automatically**:
+   - Discover the server via GET /
+   - Connect to SSE stream at /mcp
+   - List available tools
+   - Enable tool execution
+
+### Custom MCP Configuration
+
+If using a custom MCP client, configure:
+
+```json
+{
+  "mcpServers": {
+    "atlas-monolith": {
+      "url": "https://your-deployment.vercel.app",
+      "transport": "sse",
+      "auth": {
+        "type": "bearer",
+        "token": "YOUR_BEARER_TOKEN"
+      },
+      "endpoints": {
+        "discovery": "/",
+        "sse": "/mcp",
+        "jsonrpc": "/api/mcp"
+      }
+    }
+  }
+}
+```
+
+## 🔧 Available Tools
+
+The MCP server provides these tools to clients:
+
+### 1. monolith_query
+Query the Atlas Monolith Agent for information.
+
+```typescript
+{
+  name: "monolith_query",
+  description: "Query the Atlas Monolith Agent for information",
+  inputSchema: {
+    type: "object",
+    properties: {
+      query: {
+        type: "string",
+        description: "The query to send to the Monolith Agent"
+      }
+    },
+    required: ["query"]
+  }
+}
+```
+
+**Example Usage**:
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "monolith_query",
+    "arguments": {
+      "query": "What is the current system status?"
+    }
+  },
+  "id": 1
+}
+```
+
+### 2. monolith_execute
+Execute commands on the Monolith Agent.
+
+```typescript
+{
+  name: "monolith_execute",
+  description: "Execute a command on the Atlas Monolith Agent",
+  inputSchema: {
+    type: "object",
+    properties: {
+      command: {
+        type: "string",
+        description: "The command to execute"
+      },
+      args: {
+        type: "object",
+        description: "Command arguments"
+      }
+    },
+    required: ["command"]
+  }
+}
+```
+
+**Example Usage**:
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "monolith_execute",
+    "arguments": {
+      "command": "system.info",
+      "args": { "detailed": true }
+    }
+  },
+  "id": 2
+}
+```
+
+### 3. monolith_status
+Get status and health of the Monolith Agent.
+
+```typescript
+{
+  name: "monolith_status",
+  description: "Get status of Monolith Agent and Tailscale",
+  inputSchema: {
+    type: "object",
+    properties: {
+      detailed: {
+        type: "boolean",
+        description: "Include detailed information"
+      }
+    }
+  }
+}
+```
+
+### 4. tailscale_devices
+List devices on the Tailscale network.
+
+```typescript
+{
+  name: "tailscale_devices",
+  description: "List Tailscale network devices",
+  inputSchema: {
+    type: "object",
+    properties: {
+      onlineOnly: {
+        type: "boolean",
+        description: "Only return online devices"
+      }
+    }
+  }
+}
+```
+
+## ⚙️ Environment Variables
 
 ### Required Variables
 
 ```bash
 # Authentication
-BEARER_TOKEN=your-secure-bearer-token-here
-API_KEY=your-api-key-here
+BEARER_TOKEN=<your-secure-bearer-token>
+API_KEY=<your-api-key>
 
-# Monolith Agent Configuration
-MONOLITH_AGENT_URL=https://monolith-agent.example.com
-MONOLITH_API_KEY=your-monolith-api-key
+# Monolith Agent
+MONOLITH_AGENT_URL=https://monolith.your-tailnet.ts.net
+MONOLITH_API_KEY=<monolith-agent-api-key>
 
-# Tailscale Configuration
-TAILSCALE_API_KEY=your-tailscale-api-key
-TAILSCALE_TAILNET=your-tailnet-name
+# Tailscale
+TAILSCALE_API_KEY=<tailscale-api-key>
+TAILSCALE_TAILNET=<your-tailnet-name>
 ```
 
 ### Optional Variables
@@ -170,270 +438,292 @@ PORT=3000
 NODE_ENV=development
 
 # Tailscale (Optional)
-TAILSCALE_AUTH_KEY=your-tailscale-auth-key
+TAILSCALE_AUTH_KEY=<auth-key-for-device-registration>
 
 # Logging
-LOG_LEVEL=info
+LOG_LEVEL=info  # error, warn, info, debug
 
-# CORS Settings
+# CORS
 ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
 ```
 
 ### Generating Secure Tokens
 
 ```bash
-# Generate a secure bearer token
+# Generate bearer token (64 characters)
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
 
-## 📚 API Documentation
-
-### Health Check
-
-**GET** `/health`
-
-No authentication required.
-
-**Response:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2026-03-01T07:16:00.000Z",
-  "version": "1.0.0",
-  "environment": "production"
-}
-```
-
-### MCP Endpoints
-
-All MCP endpoints require Bearer token authentication.
-
-#### Execute MCP Method
-
-**POST** `/api/mcp/execute`
-
-**Headers:**
-```
-Authorization: Bearer YOUR_BEARER_TOKEN
-Content-Type: application/json
-```
-
-**Request:**
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "tools/call",
-  "params": {
-    "name": "monolith_query",
-    "arguments": {
-      "query": "What is the system status?"
-    }
-  },
-  "id": 1
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "result": {
-    "content": "System is operational"
-  },
-  "id": 1
-}
-```
-
-#### List Available Tools
-
-**GET** `/api/mcp/tools`
-
-**Response:**
-```json
-{
-  "tools": [
-    {
-      "name": "monolith_query",
-      "description": "Query the Monolith Agent for information",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "query": {
-            "type": "string",
-            "description": "The query to send to Monolith Agent"
-          }
-        },
-        "required": ["query"]
-      }
-    }
-  ]
-}
-```
-
-#### Get Server Info
-
-**GET** `/api/mcp/info`
-
-**Response:**
-```json
-{
-  "name": "monolith-vercel-bridge",
-  "version": "1.0.0",
-  "description": "Vercel MCP server bridge to Atlas Monolith Agent",
-  "capabilities": {
-    "tools": true,
-    "tailscale": true,
-    "authentication": true
-  },
-  "status": "operational"
-}
-```
-
-### Monolith Endpoints
-
-#### Forward Request
-
-**POST** `/api/monolith/forward`
-
-**Request:**
-```json
-{
-  "endpoint": "/api/v1/query",
-  "method": "POST",
-  "data": {
-    "query": "system status"
-  }
-}
-```
-
-#### Get Monolith Status
-
-**GET** `/api/monolith/status`
-
-**Response:**
-```json
-{
-  "monolith": {
-    "status": "connected",
-    "health": {
-      "status": "ok"
-    },
-    "url": "https://monolith-agent.example.com"
-  },
-  "tailscale": {
-    "connected": true,
-    "tailnet": "your-tailnet",
-    "devices": 5,
-    "onlineDevices": 3
-  },
-  "timestamp": "2026-03-01T07:16:00.000Z"
-}
-```
-
-#### Execute Command
-
-**POST** `/api/monolith/execute`
-
-**Request:**
-```json
-{
-  "command": "system.info",
-  "args": {
-    "detailed": true
-  }
-}
+# Generate API key (32 characters)
+node -e "console.log(require('crypto').randomBytes(16).toString('hex'))"
 ```
 
 ## 🔒 Security
 
-- **Bearer Token Authentication**: All API endpoints (except `/health`) require valid bearer tokens
-- **Helmet.js**: Security headers automatically applied
-- **CORS**: Configurable allowed origins
-- **Rate Limiting**: Consider adding rate limiting for production
-- **Input Validation**: Using Zod for runtime type validation
-- **Tailscale**: Secure VPN tunnel for Monolith Agent communication
+### Authentication
+All endpoints except `/` and `/health` require Bearer token authentication:
+
+```bash
+Authorization: Bearer YOUR_BEARER_TOKEN
+```
+
+### Best Practices
+
+1. **Use Strong Tokens**: Generate cryptographically secure tokens
+2. **Rotate Keys**: Regularly rotate bearer tokens and API keys
+3. **HTTPS Only**: Always use HTTPS in production
+4. **Environment Variables**: Never commit secrets to git
+5. **CORS Configuration**: Restrict allowed origins in production
+6. **Rate Limiting**: Consider adding rate limiting for production
+
+### Tailscale Security
+
+- Connections to Monolith Agent go through Tailscale VPN
+- End-to-end encrypted communication
+- No public exposure of Monolith Agent
+- Device authentication and authorization
+
+## 📊 Monitoring & Logging
+
+### Health Check
+
+```bash
+GET https://your-deployment.vercel.app/health
+
+Response:
+{
+  "status": "healthy",
+  "timestamp": "2026-03-01T07:30:00.000Z",
+  "version": "1.0.0",
+  "environment": "production",
+  "mcp": {
+    "protocol": "2024-11-05",
+    "endpoints": {
+      "root": "/",
+      "sse": "/mcp",
+      "jsonrpc": "/api/mcp"
+    }
+  }
+}
+```
+
+### Logging
+
+The server uses Winston for structured logging:
+
+```typescript
+logger.info('Message', { context: 'value' });
+logger.warn('Warning message');
+logger.error('Error message', error);
+```
+
+Logs include:
+- Timestamp
+- Log level
+- Message
+- Contextual metadata
+- Stack traces for errors
+
+### Vercel Logs
+
+View logs in Vercel Dashboard:
+1. Go to your project
+2. Navigate to "Logs" tab
+3. Filter by deployment, function, or time range
 
 ## 🧪 Testing
 
-### Test Health Endpoint
+### Test Discovery Endpoint
 
 ```bash
-curl http://localhost:3000/health
+curl https://your-deployment.vercel.app/
 ```
 
-### Test MCP Endpoint
+### Test SSE Connection
 
 ```bash
-curl -X POST http://localhost:3000/api/mcp/tools \
-  -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
-  -H "Content-Type: application/json"
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+     -H "Accept: text/event-stream" \
+     https://your-deployment.vercel.app/mcp
 ```
 
-### Test Monolith Status
+### Test Tool Execution
 
 ```bash
-curl http://localhost:3000/api/monolith/status \
-  -H "Authorization: Bearer YOUR_BEARER_TOKEN"
+curl -X POST https://your-deployment.vercel.app/api/mcp \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+      "name": "monolith_status",
+      "arguments": { "detailed": true }
+    },
+    "id": 1
+  }'
 ```
 
-## 📝 Available MCP Tools
+### Test with Poke
 
-1. **monolith_query**: Query the Monolith Agent for information
-2. **monolith_execute**: Execute a command on the Monolith Agent
-3. **monolith_status**: Get the current status of the Monolith Agent
+1. Add server in Poke settings
+2. Verify connection in Poke UI
+3. Test tool execution from Poke chat
 
-## 🔧 Development
-
-### Project Structure
+## 📁 Project Structure
 
 ```
 monolith-vercel-bridge/
+├── api/
+│   └── index.ts              # Vercel serverless entry point
 ├── src/
-│   ├── config/          # Configuration management
-│   ├── middleware/      # Express middleware
-│   ├── routes/          # API routes
-│   ├── services/        # Business logic
-│   ├── utils/           # Utility functions
-│   └── index.ts         # Application entry point
-├── dist/                # Compiled JavaScript (generated)
-├── .env.example         # Environment variables template
-├── tsconfig.json        # TypeScript configuration
-├── vercel.json          # Vercel deployment configuration
-├── package.json         # Dependencies and scripts
-└── README.md            # This file
+│   ├── config/
+│   │   └── index.ts          # Configuration management
+│   ├── handlers/
+│   │   ├── mcpHandler.ts     # JSON-RPC handler
+│   │   └── sseHandler.ts     # SSE stream handler
+│   ├── services/
+│   │   ├── mcpServer.ts      # MCP server implementation
+│   │   ├── monolithService.ts # Monolith Agent client
+│   │   └── tailscaleService.ts # Tailscale API client
+│   └── utils/
+│       ├── auth.ts           # Authentication utilities
+│       └── logger.ts         # Logging configuration
+├── .env.example              # Environment template
+├── .gitignore
+├── package.json
+├── tsconfig.json
+├── vercel.json               # Vercel deployment config
+└── README.md
 ```
 
-### Scripts
+## 🔄 MCP Protocol Flow
 
-- `npm run dev`: Start development server with hot reload
-- `npm run build`: Build for production
-- `npm start`: Start production server
-- `npm run type-check`: Run TypeScript type checking
-- `npm run lint`: Run ESLint
+### 1. Discovery Phase
+```
+Client → GET / → Server
+       ← Server Info
+```
+
+### 2. Connection Phase (SSE)
+```
+Client → GET /mcp (with auth) → Server
+       ← event: connection
+       ← event: tools
+       ← :heartbeat (every 30s)
+```
+
+### 3. Request/Response (JSON-RPC)
+```
+Client → POST /api/mcp
+         {
+           "jsonrpc": "2.0",
+           "method": "tools/call",
+           "params": {...},
+           "id": 1
+         }
+       ← {
+           "jsonrpc": "2.0",
+           "result": {...},
+           "id": 1
+         }
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+#### 1. SSE Connection Timeout
+**Issue**: SSE connection closes after 10 seconds
+
+**Cause**: Vercel serverless functions have 10s timeout
+
+**Solution**: This is expected behavior. Clients should reconnect for long-lived connections.
+
+#### 2. Authentication Failed
+**Issue**: 401 Unauthorized
+
+**Solutions**:
+- Verify `BEARER_TOKEN` in environment variables
+- Ensure `Authorization: Bearer <token>` header is set
+- Check token matches exactly (no extra spaces)
+
+#### 3. Cannot Connect to Monolith
+**Issue**: Connection refused to Monolith Agent
+
+**Solutions**:
+- Verify Tailscale connection is active
+- Check `MONOLITH_AGENT_URL` is correct Tailscale URL
+- Ensure Monolith Agent is running
+- Verify `MONOLITH_API_KEY` is valid
+
+#### 4. Tailscale API Error
+**Issue**: 401 from Tailscale API
+
+**Solutions**:
+- Verify `TAILSCALE_API_KEY` is valid
+- Check API key has necessary permissions
+- Ensure `TAILSCALE_TAILNET` is correct
+
+### Debug Mode
+
+Enable debug logging:
+
+```bash
+LOG_LEVEL=debug
+```
+
+## 🚧 Limitations
+
+### Vercel Constraints
+- 10-second function timeout (affects SSE long-polling)
+- 4.5MB request size limit
+- 6MB response size limit
+
+### Workarounds
+- SSE connections auto-close before timeout
+- Large responses are paginated
+- Consider Vercel Pro for higher limits
+
+## 📚 Resources
+
+- [MCP Specification](https://modelcontextprotocol.io/)
+- [Vercel Documentation](https://vercel.com/docs)
+- [Tailscale API](https://tailscale.com/api)
+- [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events)
+- [JSON-RPC 2.0](https://www.jsonrpc.org/specification)
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ## 📄 License
 
-MIT License - see LICENSE file for details
+MIT License - see [LICENSE](LICENSE) file
 
 ## 👤 Author
 
 **Ian Acosta**
+- GitHub: [@iacosta3994](https://github.com/iacosta3994)
 
 ## 🙏 Acknowledgments
 
-- Model Context Protocol (MCP) Specification
+- Model Context Protocol team
 - Atlas Monolith Agent
-- Tailscale for secure networking
-- Vercel for serverless deployment
+- Tailscale team
+- Vercel platform
+- Poke team for MCP client implementation
 
 ## 📞 Support
 
-For issues and questions, please open an issue on GitHub.
+- **Issues**: [GitHub Issues](https://github.com/iacosta3994/monolith-vercel-bridge/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/iacosta3994/monolith-vercel-bridge/discussions)
 
 ---
 
-**Note**: This is a production-ready implementation. Ensure all environment variables are properly configured before deployment.
+**Made with ❤️ for the MCP ecosystem**
