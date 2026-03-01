@@ -70,17 +70,26 @@ export class MCPService {
     logger.info('Executing MCP method', { method, params });
 
     switch (method) {
+      case 'initialize':
+        return this.initialize(params);
+
       case 'tools/list':
-        return this.listTools();
+        return { tools: this.listTools() };
 
       case 'tools/call':
         return this.callTool(params);
 
-      case 'initialize':
-        return this.initialize(params);
+      case 'ping':
+        return {};
+
+      case 'notifications/cancelled':
+        // Handle notification cancellation
+        return {};
 
       default:
-        throw new ServiceError(`Unknown method: ${method}`);
+        const error = new ServiceError(`Unknown method: ${method}`);
+        (error as any).code = -32601; // Method not found
+        throw error;
     }
   }
 
@@ -95,16 +104,39 @@ export class MCPService {
 
     switch (name) {
       case 'monolith_query':
-        return this.monolithService.query(args.query);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await this.monolithService.query(args.query))
+            }
+          ]
+        };
 
       case 'monolith_execute':
-        return this.monolithService.executeCommand(args.command, args.args);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await this.monolithService.executeCommand(args.command, args.args))
+            }
+          ]
+        };
 
       case 'monolith_status':
-        return this.monolithService.getStatus();
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await this.monolithService.getStatus())
+            }
+          ]
+        };
 
       default:
-        throw new ServiceError(`Unknown tool: ${name}`);
+        const error = new ServiceError(`Unknown tool: ${name}`);
+        (error as any).code = -32602; // Invalid params
+        throw error;
     }
   }
 
@@ -114,7 +146,10 @@ export class MCPService {
     return {
       protocolVersion: '2024-11-05',
       capabilities: {
-        tools: {}
+        tools: {},
+        experimental: {
+          tailscale: true
+        }
       },
       serverInfo: {
         name: 'monolith-vercel-bridge',
@@ -128,12 +163,15 @@ export class MCPService {
       name: 'monolith-vercel-bridge',
       version: '1.0.0',
       description: 'Vercel MCP server bridge to Atlas Monolith Agent',
+      protocolVersion: '2024-11-05',
       capabilities: {
         tools: true,
+        sse: true,
         tailscale: true,
         authentication: true
       },
-      status: 'operational'
+      status: 'operational',
+      transport: 'sse'
     };
   }
 }

@@ -10,8 +10,10 @@ import monolithRouter from './routes/monolith.js';
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
+// Security middleware - disable CSP for SSE
+app.use(helmet({
+  contentSecurityPolicy: false
+}));
 app.use(cors({
   origin: config.allowedOrigins,
   credentials: true
@@ -30,6 +32,50 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// Root handler - MCP server identification
+app.get('/', (req: Request, res: Response) => {
+  res.json({
+    name: 'monolith-vercel-bridge',
+    version: '1.0.0',
+    description: 'Production-ready Vercel MCP server implementation that connects to Atlas\'s Monolith Agent',
+    protocol: 'mcp',
+    protocolVersion: '2024-11-05',
+    capabilities: {
+      tools: true,
+      sse: true,
+      tailscale: true
+    },
+    endpoints: {
+      mcp: '/mcp',
+      discovery: '/.well-known/mcp-server',
+      health: '/health',
+      monolith: '/api/monolith'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Poke discovery mechanism
+app.get('/.well-known/mcp-server', (req: Request, res: Response) => {
+  res.json({
+    mcpServers: {
+      'monolith-vercel-bridge': {
+        url: `${req.protocol}://${req.get('host')}/mcp`,
+        name: 'monolith-vercel-bridge',
+        version: '1.0.0',
+        description: 'Vercel MCP server bridge to Atlas Monolith Agent',
+        transport: 'sse',
+        capabilities: {
+          tools: {},
+          experimental: {
+            tailscale: true
+          }
+        }
+      }
+    }
+  });
+});
+
 // Health check endpoint (no auth required)
 app.get('/health', (req: Request, res: Response) => {
   res.json({
@@ -40,8 +86,10 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
+// MCP SSE endpoint (with authentication)
+app.use('/mcp', mcpRouter);
+
 // API routes (with authentication)
-app.use('/api/mcp', authenticateRequest, mcpRouter);
 app.use('/api/monolith', authenticateRequest, monolithRouter);
 
 // 404 handler
