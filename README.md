@@ -6,7 +6,10 @@ Production-ready Vercel MCP (Model Context Protocol) server implementation that 
 
 ## 🚀 Features
 
-- **MCP Protocol Support**: Full implementation of the Model Context Protocol for AI agent communication
+- **Full MCP Protocol Compliance**: Complete implementation of MCP protocol with JSON-RPC 2.0
+- **Server-Sent Events (SSE)**: Bidirectional communication via SSE transport
+- **Poke Discovery**: Automatic server discovery via `/.well-known/mcp-server`
+- **Root Handler**: MCP server identification at root endpoint
 - **Express Server**: Production-grade Express.js server with TypeScript
 - **Bearer Token Authentication**: Secure API access with bearer token validation
 - **Tailscale Integration**: Secure network communication via Tailscale
@@ -14,7 +17,6 @@ Production-ready Vercel MCP (Model Context Protocol) server implementation that 
 - **Error Handling**: Comprehensive error handling and logging with Winston
 - **Type Safety**: Full TypeScript implementation with strict type checking
 - **Vercel Ready**: Optimized for Vercel deployment with serverless functions
-- **Production Ready**: Includes security headers, CORS, rate limiting considerations
 
 ## 📋 Architecture Overview
 
@@ -24,21 +26,27 @@ Production-ready Vercel MCP (Model Context Protocol) server implementation that 
 │  (AI Assistant) │
 └────────┬────────┘
          │
-         │ HTTPS + Bearer Token
+         │ SSE + JSON-RPC 2.0
          ▼
 ┌─────────────────────────────┐
 │  Vercel MCP Server          │
 │  ┌──────────────────────┐   │
-│  │  Express Server      │   │
-│  │  - Auth Middleware   │   │
-│  │  - MCP Routes        │   │
-│  │  - Error Handling    │   │
+│  │  Root Handler        │   │
+│  │  - Server Info       │   │
+│  │  - Discovery         │   │
+│  └──────────────────────┘   │
+│  ┌──────────────────────┐   │
+│  │  SSE Transport       │   │
+│  │  - Endpoint Event    │   │
+│  │  - Keep-alive        │   │
+│  │  - Message Handler   │   │
 │  └──────────┬───────────┘   │
 │             │                │
 │  ┌──────────▼───────────┐   │
 │  │  MCP Service         │   │
 │  │  - Tool Management   │   │
 │  │  - Request Routing   │   │
+│  │  - JSON-RPC 2.0      │   │
 │  └──────────┬───────────┘   │
 │             │                │
 │  ┌──────────▼───────────┐   │
@@ -188,6 +196,61 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ## 📚 API Documentation
 
+### Root Endpoint - MCP Server Identification
+
+**GET** `/`
+
+No authentication required. Returns MCP server information.
+
+**Response:**
+```json
+{
+  "name": "monolith-vercel-bridge",
+  "version": "1.0.0",
+  "description": "Production-ready Vercel MCP server implementation",
+  "protocol": "mcp",
+  "protocolVersion": "2024-11-05",
+  "capabilities": {
+    "tools": true,
+    "sse": true,
+    "tailscale": true
+  },
+  "endpoints": {
+    "mcp": "/mcp",
+    "discovery": "/.well-known/mcp-server",
+    "health": "/health",
+    "monolith": "/api/monolith"
+  }
+}
+```
+
+### Poke Discovery Mechanism
+
+**GET** `/.well-known/mcp-server`
+
+No authentication required. Provides MCP server discovery information.
+
+**Response:**
+```json
+{
+  "mcpServers": {
+    "monolith-vercel-bridge": {
+      "url": "https://your-deployment.vercel.app/mcp",
+      "name": "monolith-vercel-bridge",
+      "version": "1.0.0",
+      "description": "Vercel MCP server bridge to Atlas Monolith Agent",
+      "transport": "sse",
+      "capabilities": {
+        "tools": {},
+        "experimental": {
+          "tailscale": true
+        }
+      }
+    }
+  }
+}
+```
+
 ### Health Check
 
 **GET** `/health`
@@ -204,13 +267,130 @@ No authentication required.
 }
 ```
 
-### MCP Endpoints
+### MCP SSE Endpoint
 
-All MCP endpoints require Bearer token authentication.
+**GET** `/mcp`
+
+Establishes Server-Sent Events connection for MCP protocol communication.
+
+**Headers:**
+```
+Authorization: Bearer YOUR_BEARER_TOKEN
+Accept: text/event-stream
+```
+
+**SSE Events:**
+```
+event: endpoint
+data: {"jsonrpc":"2.0","method":"endpoint","params":{"endpoint":"/mcp/message"}}
+
+: ping
+```
+
+### MCP Message Endpoint
+
+**POST** `/mcp/message`
+
+JSON-RPC 2.0 compliant endpoint for MCP protocol messages.
+
+**Headers:**
+```
+Authorization: Bearer YOUR_BEARER_TOKEN
+Content-Type: application/json
+```
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {},
+    "clientInfo": {
+      "name": "example-client",
+      "version": "1.0.0"
+    }
+  },
+  "id": 1
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {
+      "tools": {},
+      "experimental": {
+        "tailscale": true
+      }
+    },
+    "serverInfo": {
+      "name": "monolith-vercel-bridge",
+      "version": "1.0.0"
+    }
+  },
+  "id": 1
+}
+```
+
+### Supported MCP Methods
+
+1. **initialize**: Initialize MCP connection
+   ```json
+   {
+     "jsonrpc": "2.0",
+     "method": "initialize",
+     "params": {
+       "protocolVersion": "2024-11-05",
+       "capabilities": {},
+       "clientInfo": { "name": "client", "version": "1.0.0" }
+     },
+     "id": 1
+   }
+   ```
+
+2. **tools/list**: List available tools
+   ```json
+   {
+     "jsonrpc": "2.0",
+     "method": "tools/list",
+     "id": 2
+   }
+   ```
+
+3. **tools/call**: Call a specific tool
+   ```json
+   {
+     "jsonrpc": "2.0",
+     "method": "tools/call",
+     "params": {
+       "name": "monolith_query",
+       "arguments": {
+         "query": "What is the system status?"
+       }
+     },
+     "id": 3
+   }
+   ```
+
+4. **ping**: Keep-alive ping
+   ```json
+   {
+     "jsonrpc": "2.0",
+     "method": "ping",
+     "id": 4
+   }
+   ```
+
+### Legacy MCP Endpoints (Backward Compatible)
 
 #### Execute MCP Method
 
-**POST** `/api/mcp/execute`
+**POST** `/mcp/execute`
 
 **Headers:**
 ```
@@ -233,20 +413,9 @@ Content-Type: application/json
 }
 ```
 
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "result": {
-    "content": "System is operational"
-  },
-  "id": 1
-}
-```
-
 #### List Available Tools
 
-**GET** `/api/mcp/tools`
+**GET** `/mcp/tools`
 
 **Response:**
 ```json
@@ -272,7 +441,7 @@ Content-Type: application/json
 
 #### Get Server Info
 
-**GET** `/api/mcp/info`
+**GET** `/mcp/info`
 
 **Response:**
 ```json
@@ -280,16 +449,21 @@ Content-Type: application/json
   "name": "monolith-vercel-bridge",
   "version": "1.0.0",
   "description": "Vercel MCP server bridge to Atlas Monolith Agent",
+  "protocolVersion": "2024-11-05",
   "capabilities": {
     "tools": true,
+    "sse": true,
     "tailscale": true,
     "authentication": true
   },
-  "status": "operational"
+  "status": "operational",
+  "transport": "sse"
 }
 ```
 
 ### Monolith Endpoints
+
+All Monolith endpoints require Bearer token authentication.
 
 #### Forward Request
 
@@ -346,14 +520,26 @@ Content-Type: application/json
 
 ## 🔒 Security
 
-- **Bearer Token Authentication**: All API endpoints (except `/health`) require valid bearer tokens
-- **Helmet.js**: Security headers automatically applied
+- **Bearer Token Authentication**: All API endpoints (except `/`, `/.well-known/mcp-server`, and `/health`) require valid bearer tokens
+- **Helmet.js**: Security headers automatically applied (CSP disabled for SSE)
 - **CORS**: Configurable allowed origins
-- **Rate Limiting**: Consider adding rate limiting for production
 - **Input Validation**: Using Zod for runtime type validation
 - **Tailscale**: Secure VPN tunnel for Monolith Agent communication
+- **JSON-RPC 2.0**: Standard protocol for error handling
 
 ## 🧪 Testing
+
+### Test Root Endpoint
+
+```bash
+curl http://localhost:3000/
+```
+
+### Test Discovery Endpoint
+
+```bash
+curl http://localhost:3000/.well-known/mcp-server
+```
 
 ### Test Health Endpoint
 
@@ -361,12 +547,25 @@ Content-Type: application/json
 curl http://localhost:3000/health
 ```
 
-### Test MCP Endpoint
+### Test SSE Connection
 
 ```bash
-curl -X POST http://localhost:3000/api/mcp/tools \
+curl -N -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
+  -H "Accept: text/event-stream" \
+  http://localhost:3000/mcp
+```
+
+### Test MCP Message
+
+```bash
+curl -X POST http://localhost:3000/mcp/message \
   -H "Authorization: Bearer YOUR_BEARER_TOKEN" \
-  -H "Content-Type: application/json"
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/list",
+    "id": 1
+  }'
 ```
 
 ### Test Monolith Status
@@ -379,8 +578,13 @@ curl http://localhost:3000/api/monolith/status \
 ## 📝 Available MCP Tools
 
 1. **monolith_query**: Query the Monolith Agent for information
+   - Returns text content with query results
+   
 2. **monolith_execute**: Execute a command on the Monolith Agent
+   - Returns text content with execution results
+   
 3. **monolith_status**: Get the current status of the Monolith Agent
+   - Returns text content with status information
 
 ## 🔧 Development
 
@@ -391,8 +595,8 @@ monolith-vercel-bridge/
 ├── src/
 │   ├── config/          # Configuration management
 │   ├── middleware/      # Express middleware
-│   ├── routes/          # API routes
-│   ├── services/        # Business logic
+│   ├── routes/          # API routes (SSE + REST)
+│   ├── services/        # Business logic (MCP + Monolith)
 │   ├── utils/           # Utility functions
 │   └── index.ts         # Application entry point
 ├── dist/                # Compiled JavaScript (generated)
@@ -410,6 +614,19 @@ monolith-vercel-bridge/
 - `npm start`: Start production server
 - `npm run type-check`: Run TypeScript type checking
 - `npm run lint`: Run ESLint
+
+## 🎯 MCP Protocol Compliance
+
+This implementation follows the MCP (Model Context Protocol) specification:
+
+- ✅ **Root Handler**: Returns server identification at `/`
+- ✅ **SSE Transport**: Full Server-Sent Events implementation
+- ✅ **JSON-RPC 2.0**: Compliant request/response format
+- ✅ **Poke Discovery**: `/.well-known/mcp-server` endpoint
+- ✅ **Standard Methods**: `initialize`, `tools/list`, `tools/call`, `ping`
+- ✅ **Error Codes**: Proper JSON-RPC error codes (-32601, -32602, -32603)
+- ✅ **Keep-alive**: SSE connection maintenance with ping
+- ✅ **Endpoint Event**: Initial SSE event for message endpoint
 
 ## 🤝 Contributing
 
@@ -436,4 +653,4 @@ For issues and questions, please open an issue on GitHub.
 
 ---
 
-**Note**: This is a production-ready implementation. Ensure all environment variables are properly configured before deployment.
+**Note**: This is a production-ready implementation with full MCP protocol compliance. Ensure all environment variables are properly configured before deployment.
