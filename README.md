@@ -1,3 +1,9 @@
+# DEPRECATED
+
+⚠️ **This repository is deprecated.** Please use https://github.com/iacosta3994/monolith_gateway instead.
+
+---
+
 # Monolith Vercel Bridge - MCP Server
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fiacosta3994%2Fmonolith-vercel-bridge&env=BEARER_TOKEN,API_KEY,MONOLITH_AGENT_URL,MONOLITH_API_KEY,TAILSCALE_API_KEY,TAILSCALE_TAILNET&envDescription=Configuration%20for%20Monolith%20Bridge&envLink=https%3A%2F%2Fgithub.com%2Fiacosta3994%2Fmonolith-vercel-bridge%23environment-variables)
